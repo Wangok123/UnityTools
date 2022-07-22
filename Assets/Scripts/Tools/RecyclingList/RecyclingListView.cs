@@ -109,7 +109,66 @@ public class RecyclingListView : MonoBehaviour
         scrollRect.onValueChanged.RemoveListener(OnScrollChanged);
     }
 
-    protected virtual void UpdateContentHeight()
+  /// <summary>
+  /// 供外部调用，强制滚动列表，使某一行显示在列表中
+  /// </summary>
+  /// <param name="row">行号</param>
+  /// <param name="posType">目标行显示在列表的位置：顶部，中心，底部</param>
+  public virtual void ScrollToRow(int row, ScrollPosType posType)
+  {
+    scrollRect.verticalNormalizedPosition = GetRowScrollPosition(row, posType);
+  }
+
+  /// <summary>
+  /// 获得归一化的滚动位置，该位置将给定的行在视图中居中
+  /// </summary>
+  /// <param name="row">行号</param>
+  /// <returns></returns>
+  public float GetRowScrollPosition(int row, ScrollPosType posType)
+  {
+    // 视图高
+    float vpHeight = ViewportHeight();
+    float rowHeight = RowHeight();
+    // 将目标行滚动到列表目标位置时，列表顶部的位置
+    float vpTop = 0;
+    switch (posType)
+    {
+      case ScrollPosType.Top:
+        {
+          vpTop = row * rowHeight;
+        }
+        break;
+      case ScrollPosType.Center:
+        {
+          // 目标行的中心位置与列表顶部的距离
+          float rowCentre = (row + 0.5f) * rowHeight;
+          // 视口中心位置
+          float halfVpHeight = vpHeight * 0.5f;
+
+          vpTop = Mathf.Max(0, rowCentre - halfVpHeight);
+        }
+        break;
+      case ScrollPosType.Bottom:
+        {
+          vpTop = (row + 1) * rowHeight - vpHeight;
+        }
+        break;
+    }
+
+
+    // 滚动后，列表底部的位置
+    float vpBottom = vpTop + vpHeight;
+    // 列表内容总高度
+    float contentHeight = scrollRect.content.sizeDelta.y;
+    // 如果滚动后，列表底部的位置已经超过了列表总高度，则调整列表顶部的位置
+    if (vpBottom > contentHeight)
+      vpTop = Mathf.Max(0, vpTop - (vpBottom - contentHeight));
+
+    // 反插值，计算两个值之间的Lerp参数。也就是value在from和to之间的比例值
+    return Mathf.InverseLerp(contentHeight - vpHeight, 0, vpTop);
+  }
+
+  protected virtual void UpdateContentHeight()
     {
         // 列表高度
         float height = ChildObj.RectTransform.rect.height * rowCount + (rowCount - 1) * RowPadding;
@@ -117,6 +176,11 @@ public class RecyclingListView : MonoBehaviour
         var sz = scrollRect.content.sizeDelta;
         scrollRect.content.sizeDelta = new Vector2(sz.x, height);
     }
+
+  public void Clear()
+  {
+    RowCount = 0;
+  }
 
     /// <summary>
     /// 重新计算列表内容
@@ -189,7 +253,23 @@ public class RecyclingListView : MonoBehaviour
         }
     }
 
-    protected virtual bool CheckChildItems()
+  /// <summary>
+  /// 根据行号获取复用的item对象
+  /// </summary>
+  /// <param name="row">行号</param>
+  protected RecyclingListViewItem GetRowItem(int row)
+  {
+    if (childItems != null &&
+        row >= sourceDataRowStart && row < sourceDataRowStart + childItems.Length &&
+        row < rowCount)
+    {
+      // 注意这里要根据行号计算复用的item原始索引
+      return childItems[WrapChildIndex(childBufferStart + row - sourceDataRowStart)];
+    }
+
+    return null;
+  }
+  protected virtual bool CheckChildItems()
     {
         // 列表视口高度
         float vpHeight = ViewportHeight();
