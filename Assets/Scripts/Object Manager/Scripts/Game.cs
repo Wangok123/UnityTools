@@ -7,7 +7,7 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public class Game : PersistableObject {
 
-	const int saveVersion = 3;
+	const int saveVersion = 4;
 
 	[SerializeField] ShapeFactory shapeFactory;
 
@@ -87,6 +87,11 @@ public class Game : PersistableObject {
 	}
 
 	void FixedUpdate () {
+		for (int i = 0; i < shapes.Count; i++)
+		{
+			shapes[i].GameUpdate();
+		}
+
 		creationProgress += Time.deltaTime * CreationSpeed;
 		while (creationProgress >= 1f) {
 			creationProgress -= 1f;
@@ -142,6 +147,8 @@ public class Game : PersistableObject {
 			valueMin: 0.25f, valueMax: 1f,
 			alphaMin: 1f, alphaMax: 1f
 		));
+		instance.AngularVelocity = Random.onUnitSphere * Random.Range(0f, 90f);
+		instance.Velocity = Random.onUnitSphere * Random.Range(0f, 2f);
 		shapes.Add(instance);
 	}
 
